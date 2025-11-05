@@ -5,6 +5,7 @@ using NUnit.Framework;
 using NUnit.Framework.Interfaces;
 using System;
 using System.Collections.Generic;
+using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using System.Threading.Tasks;
 using Unity.VisualScripting;
@@ -20,10 +21,13 @@ using VTools.ScriptableObjectDatabase;
 public class CellularAutomataOptimize : ProceduralGenerationMethod
 {
     public float groundWeight = 0.5f;
+    public float stoneWeight = 0.5f;
     [SerializeField] private int groundCount = 4;
+    [SerializeField] private int stoneCount = 6;
 
     private GridObjectTemplate groundTemplate;
     private GridObjectTemplate waterTemplate;
+    private GridObjectTemplate stoneTemplate;
     private List<Cell> allCells = new List<Cell>();
 
     private readonly Vector2Int[] directions = new Vector2Int[]
@@ -42,6 +46,7 @@ public class CellularAutomataOptimize : ProceduralGenerationMethod
     {
         groundTemplate = ScriptableObjectDatabase.GetScriptableObject<GridObjectTemplate>("Grass");
         waterTemplate = ScriptableObjectDatabase.GetScriptableObject<GridObjectTemplate>("Water");
+        stoneTemplate = ScriptableObjectDatabase.GetScriptableObject<GridObjectTemplate>("Rock");
         PlaceRandomCell();
 
 
@@ -65,8 +70,19 @@ public class CellularAutomataOptimize : ProceduralGenerationMethod
             {
                 Grid.GetCellByCoordinates(x, z, out Cell chosenCell);
 
-                GridObjectTemplate templateToPlace = RandomService.Chance(groundWeight) ? groundTemplate : waterTemplate;
-                GridGenerator.AddGridObjectToCell(chosenCell, templateToPlace, false);
+                GridObjectTemplate templateToPlace = RandomService.Chance(groundWeight)
+                    ? groundTemplate
+                    : waterTemplate;
+
+                if(groundTemplate == templateToPlace)
+                {
+                    if (RandomService.Chance(stoneWeight))
+                    {
+                        templateToPlace = stoneTemplate;
+                    }
+                }
+
+                GridGenerator.AddGridObjectToCell(chosenCell, templateToPlace, true);
                 allCells.Add(chosenCell);
             }
         }
@@ -76,6 +92,7 @@ public class CellularAutomataOptimize : ProceduralGenerationMethod
     {
         List<(Cell cell, GridObjectTemplate template)> cellsToUpdate = new List<(Cell, GridObjectTemplate)>();
         string groundName = groundTemplate.Name;
+        string stoneName = stoneTemplate.Name;
 
         for (int x = 0; x < Grid.Width; x++)
         {
@@ -85,20 +102,40 @@ public class CellularAutomataOptimize : ProceduralGenerationMethod
                     continue;
 
                 int groundNeighbors = 0;
+                int stoneNeighbors = 0;
+                int waterNeighbors = 0;
 
                 foreach (Vector2Int dir in directions)
                 {
                     int checkX = x + dir.x;
                     int checkZ = z + dir.y;
 
-                    if (Grid.TryGetCellByCoordinates(checkX, checkZ, out Cell neighborCell) &&
-                     neighborCell.GridObject?.Template.Name == groundName)
+                    if (Grid.TryGetCellByCoordinates(checkX, checkZ, out Cell neighborCell))
                     {
-                        groundNeighbors++;
+                        string neighborName = neighborCell.GridObject?.Template.Name;
+
+                        if (neighborName == groundName)
+                            groundNeighbors++;
+                        else if (neighborName == stoneName)
+                            stoneNeighbors++;
+                        else
+                            waterNeighbors++;
                     }
                 }
 
-                GridObjectTemplate newTemplate = groundNeighbors >= groundCount ? groundTemplate : waterTemplate;
+                GridObjectTemplate newTemplate;
+                if (groundNeighbors >= stoneCount || waterNeighbors <= 0)
+                {
+                    newTemplate = stoneTemplate;
+                }
+                else if (groundNeighbors + stoneNeighbors >= groundCount)
+                {
+                    newTemplate = groundTemplate;
+                }
+                else
+                {
+                    newTemplate = waterTemplate;
+                }
 
                 if (currentCell.GridObject?.Template != newTemplate)
                 {
