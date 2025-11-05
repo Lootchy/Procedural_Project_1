@@ -81,6 +81,11 @@ namespace VTools.Grid
             return false;
         }
 
+        public void GetCellByCoordinates(int x, int y, out Cell foundCell)
+        {
+            foundCell = _gridArray[x, y];
+        }
+
         public bool TryGetCellByCoordinates(Vector2Int coordinates, out Cell foundCell)
         {
             var cellFound = TryGetCellByCoordinates(coordinates.x, coordinates.y, out Cell cell);
