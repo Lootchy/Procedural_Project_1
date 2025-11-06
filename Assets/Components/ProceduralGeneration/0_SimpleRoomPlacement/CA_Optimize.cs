@@ -16,10 +16,15 @@ using VTools.ScriptableObjectDatabase;
 
 
 
-
 [CreateAssetMenu(menuName = "Procedural Generation Method/CellularAutomataOptimize")]
 public class CellularAutomataOptimize : ProceduralGenerationMethod
 {
+    public struct TemplateSprite
+    {
+        public GridObjectTemplate template;
+        public Sprite sprite;
+    }
+
     public float groundWeight = 0.5f;
     public float stoneWeight = 0.5f;
     [SerializeField] private int groundCount = 4;
@@ -30,16 +35,24 @@ public class CellularAutomataOptimize : ProceduralGenerationMethod
     private GridObjectTemplate stoneTemplate;
     private List<Cell> allCells = new List<Cell>();
 
+    private TemplateSprite rock;
+    private TemplateSprite ground;
+    private TemplateSprite water;
+
+    [SerializeField] private Sprite waterSprite;
+    [SerializeField] private Sprite groundSprite;
+    [SerializeField] private Sprite rockSprite;
+
     private readonly Vector2Int[] directions = new Vector2Int[]
     {
-        new Vector2Int(1, 0),   // Droite
-        new Vector2Int(-1, 0),  // Gauche
-        new Vector2Int(0, 1),   // Haut
-        new Vector2Int(0, -1),  // Bas
-        new Vector2Int(1, 1),   // Haut-droite
-        new Vector2Int(1, -1),  // Bas-droite
-        new Vector2Int(-1, 1),  // Haut-gauche
-        new Vector2Int(-1, -1)  // Bas-gauche
+        new Vector2Int(1, 0),
+        new Vector2Int(-1, 0),
+        new Vector2Int(0, 1),
+        new Vector2Int(0, -1),
+        new Vector2Int(1, 1),
+        new Vector2Int(1, -1),
+        new Vector2Int(-1, 1),
+        new Vector2Int(-1, -1)
     };
 
     protected override async UniTask ApplyGeneration(CancellationToken cancellationToken)
@@ -47,10 +60,18 @@ public class CellularAutomataOptimize : ProceduralGenerationMethod
         groundTemplate = ScriptableObjectDatabase.GetScriptableObject<GridObjectTemplate>("Grass");
         waterTemplate = ScriptableObjectDatabase.GetScriptableObject<GridObjectTemplate>("Water");
         stoneTemplate = ScriptableObjectDatabase.GetScriptableObject<GridObjectTemplate>("Rock");
+
+        water.template = waterTemplate;
+        water.sprite = waterSprite;
+
+        ground.template = groundTemplate;
+        ground.sprite = groundSprite;
+
+        rock.template = stoneTemplate;
+        rock.sprite = rockSprite;
+
         PlaceRandomCell();
 
-
-        
         for (int i = 0; i < _maxSteps; i++)
         {
             SmoothGrid();
@@ -74,7 +95,7 @@ public class CellularAutomataOptimize : ProceduralGenerationMethod
                     ? groundTemplate
                     : waterTemplate;
 
-                if(groundTemplate == templateToPlace)
+                if (groundTemplate == templateToPlace)
                 {
                     if (RandomService.Chance(stoneWeight))
                     {
@@ -90,7 +111,7 @@ public class CellularAutomataOptimize : ProceduralGenerationMethod
 
     private void SmoothGrid()
     {
-        List<(Cell cell, GridObjectTemplate template)> cellsToUpdate = new List<(Cell, GridObjectTemplate)>();
+        List<(Cell cell, TemplateSprite templateSprite)> cellsToUpdate = new List<(Cell, TemplateSprite)>();
         string groundName = groundTemplate.Name;
         string stoneName = stoneTemplate.Name;
 
@@ -123,30 +144,32 @@ public class CellularAutomataOptimize : ProceduralGenerationMethod
                     }
                 }
 
-                GridObjectTemplate newTemplate;
+                TemplateSprite newTemplateSprite;
                 if (groundNeighbors >= stoneCount || waterNeighbors <= 0)
                 {
-                    newTemplate = stoneTemplate;
+                    newTemplateSprite = rock;
                 }
                 else if (groundNeighbors + stoneNeighbors >= groundCount)
                 {
-                    newTemplate = groundTemplate;
+                    newTemplateSprite = ground;
                 }
                 else
                 {
-                    newTemplate = waterTemplate;
+                    newTemplateSprite = water;
                 }
 
-                if (currentCell.GridObject?.Template != newTemplate)
+                if (currentCell.GridObject?.Template != newTemplateSprite.template)
                 {
-                    cellsToUpdate.Add((currentCell, newTemplate));
+                    cellsToUpdate.Add((currentCell, newTemplateSprite));
                 }
             }
         }
 
-        foreach (var (cell, template) in cellsToUpdate)
+        foreach (var (cell, templateSprite) in cellsToUpdate)
         {
-            GridGenerator.AddGridObjectToCell(cell, template, true);
+            cell.View.SetCellToGrid(cell, templateSprite.template, templateSprite.sprite);
         }
     }
+
+    
 }

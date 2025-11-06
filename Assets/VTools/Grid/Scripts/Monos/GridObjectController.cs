@@ -6,7 +6,12 @@ namespace VTools.Grid
     public class GridObjectController : MonoBehaviour
     {
         public GridObject GridObject { get; private set; }
-        
+        [SerializeField]private SpriteRenderer sprite;
+
+        private void Awake()
+        {
+            sprite = GetComponentInChildren<SpriteRenderer>();
+        }
         public void Initialize(GridObject gridObject)
         {
             GridObject = gridObject;
@@ -34,6 +39,15 @@ namespace VTools.Grid
         {
             GridObject.SetGridData(cell, grid);
             MoveTo(cell.GetCenterPosition(grid.OriginPosition));
+        }
+
+
+        public void SetCellToGrid(Cell cell, GridObjectTemplate template, Sprite customSprite = null)
+        {
+            if (customSprite != null)
+            {
+                sprite.sprite = customSprite;
+            }
         }
     }
 }
