@@ -406,8 +406,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3cbe3e69ae8e450b821d70157faac84e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _gridXValue: 64
-  _gridYValue: 64
+  _gridXValue: 200
+  _gridYValue: 200
   _cellSize: 1
   _startPosition: {x: 0, y: 0, z: 0}
   _generationMethod: {fileID: 11400000, guid: 8eac648685a8d4b4ebee471756d0d342, type: 2}

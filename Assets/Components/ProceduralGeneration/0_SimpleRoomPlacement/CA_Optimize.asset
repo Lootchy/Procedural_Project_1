@@ -17,3 +17,6 @@ MonoBehaviour:
   stoneWeight: 0.1
   groundCount: 4
   stoneCount: 8
+  waterSprite: {fileID: 21300000, guid: 52fa5e8a075c61a4398859e7ccc536d8, type: 3}
+  groundSprite: {fileID: 21300000, guid: 4a459413cbe1f5f489e91ca286eaaea3, type: 3}
+  rockSprite: {fileID: 21300000, guid: 88acf603b022b884db34baae927dc5f8, type: 3}
