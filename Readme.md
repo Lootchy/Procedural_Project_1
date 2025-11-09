@@ -1,2 +1,2 @@
-Procedrual Map Generation
+Procedural Map Generation
 ===
