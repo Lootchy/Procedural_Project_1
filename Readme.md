@@ -134,7 +134,7 @@ private void PlaceCorridors()
 
 Le paramètre `overrideExistingObjects` est défini sur `false` pour éviter d'écraser les tiles de room déjà placées lors du tracé des couloirs.
 
-##BSP Generation
+## BSP Generation
 Cet algorithme utilise la technique de **Binary Space Partitioning** pour diviser récursivement l'espace de la grid en zones de plus en plus petites, créant ainsi une structure arborescente de salles.
 ![Map Generation Example](images/Dungeon_bsp7.png)
 
