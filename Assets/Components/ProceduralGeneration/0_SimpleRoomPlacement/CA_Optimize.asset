@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0bb8d9621b6e3ba428a604b1e458ec51, type: 3}
   m_Name: CA_Optimize
   m_EditorClassIdentifier: 
-  _maxSteps: 4
+  _maxSteps: 10
   groundWeight: 0.5
   stoneWeight: 0.1
   groundCount: 4

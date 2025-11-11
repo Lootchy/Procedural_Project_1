@@ -12,5 +12,5 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 83d1fd6e4200ec64b9a704fc21c74a52, type: 3}
   m_Name: New Test BSP
   m_EditorClassIdentifier: 
-  _maxSteps: 20
-  _maxNode: 10
+  _maxSteps: 10
+  maxNodeSize: 4

@@ -12,5 +12,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 151c617127a46924f89e26ab2f94401b, type: 3}
   m_Name: New Cellular Automata
   m_EditorClassIdentifier: 
-  _maxSteps: 1000
-  groundWeight: 0.5
+  _maxSteps: 4
+  groundWeight: 0.6
+  groundCount: 5
