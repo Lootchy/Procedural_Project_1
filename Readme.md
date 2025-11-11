@@ -231,11 +231,6 @@ protected override async UniTask ApplyGeneration(CancellationToken cancellationT
 }
 ```
 
-Le processus est donc :
-1. Créer un nœud racine couvrant toute la grid
-2. Subdiviser récursivement jusqu'à atteindre la taille minimale
-3. Placer une salle dans chaque feuille de l'arbre
-4. Construire le sol autour des salles
 
 Cette méthode garantit une distribution équilibrée des salles sur toute la map, contrairement au placement aléatoire simple qui peut créer des zones vides.
 Et chaque rooms étant connecté entre elles via l'arbre, il est facile de créer des couloirs entre eux
@@ -432,3 +427,109 @@ et ensuite on remplace le sprite.
 
 Et ce code permet aussi de modifier uniquement les cell qui doivent changer et pas toute la grid comme le dernier code.
 
+## Noise Map Generation
+
+Cet algorithme utilise la librairy **FastNoiseLite** pour générer des terrains plutot réalistes basés sur différents types de bruit procédural (Perlin, Simplex, etc.).
+
+![Map Generation Example](images/noise.png)
+
+### Principe du bruit procédural
+
+La noise map génère des valeurs entre -1 et 1 pour chaque position (x, y) de la "grid". Ces valeurs créent des variations douces et continues, parfaites pour simuler des élévations de terrain.
+
+### Configuration de FastNoiseLite
+
+Avant de générer la map, on configure le noise map avec plusieurs paramètres qui influencent l'apparence finale du terrain :
+```csharp
+noise.SetSeed(GridGenerator.Seed);              // Seed pour la reproductibilité
+noise.SetFrequency(frenquency);                 // Fréquence du bruit (taille de la noise map)
+noise.SetFractalType(fractalType);              // Type de fractal (FBm, Ridged, etc.) 
+noise.SetFractalGain(fractalGain);              // Amplitude de chaque octave
+noise.SetNoiseType(noiseType);                  // Type de bruit (Perlin, Simplex, etc.)
+noise.SetFractalOctaves(fractalOctave);         // Nombre de couches de détails
+noise.SetFractalLacunarity(fractalLacunarity);  // Fréquence entre les octaves
+```
+
+#### Paramètres clés
+
+**Frequency** (0.0 - 0.1) : Contrôle le "zoom" du bruit
+- Valeurs basses → grandes formations (continents)
+- Valeurs hautes → petites formations (collines)
+
+**Fractal Octaves** (1 - 10) : Nombre de couches de détails superposées
+- Plus d'octaves = plus de détails mais plus coûteux en performance
+- Chaque octave ajoute une couche de variation à une échelle différente
+
+**Fractal Gain** (0.0 - 1.0) : Contrôle l'amplitude de chaque octave successive
+- Détermine comment les détails fins affectent le résultat final
+
+**Fractal Lacunarity** (1.0 - 4.0) : Contrôle la fréquence de chaque octave successive
+- Valeurs plus élevées = variations plus rapides entre les octaves
+
+**Noise Type** : Type d'algorithme de bruit utilisé
+- OpenSimplex2 : Bon compromis qualité/performance
+- Perlin : Classique, légèrement plus lent
+- Cellular : Pour des effets de cellules (Voronoi)
+
+**Fractal Type** : Méthode de combinaison des octaves
+- FBm (Fractional Brownian Motion) : Standard, bon pour terrains naturels
+- Ridged : Crée des crêtes, parfait pour montagnes
+- PingPong : Effets de vagues
+
+### Génération de la heightmap
+
+Une fois configuré, on génère une valeur de bruit pour chaque cellule de la grid :
+```csharp
+float[,] noiseData = new float[Grid.Width, Grid.Lenght];
+
+for (int x = 0; x < Grid.Width; x++)
+{
+    for (int y = 0; y < Grid.Lenght; y++)
+    {
+        noiseData[x, y] = noise.GetNoise(x, y);
+    }
+}
+```
+
+La méthode `GetNoise(x, y)` retourne une valeur entre **-1 et 1** représentant l'"élévation" à cette position.
+
+### Attribution des biomes par seuils
+
+On utilise ensuite des height pour déterminer quel type de terrain placer à chaque position. C'est comme découper une carte topographique en zones d'altitude :
+```csharp
+[Header("Height")]
+[SerializeField, Range(-1, 1)] private float waterHeight = -0.2f;
+[SerializeField, Range(-1, 1)] private float sandHeight = 0.0f;
+[SerializeField, Range(-1, 1)] private float groundHeight = 0.4f;
+[SerializeField, Range(-1, 1)] private float rockHeight = 0.7f;
+```
+
+La logique d'attribution fonctionne par paliers via les heights :
+```csharp
+float noiseValue = noiseData[x, y];
+Grid.GetCellByCoordinates(x, y, out Cell chosenCell);
+
+if (noiseValue < waterHeight)              // < -0.2 → Eau
+{
+    GridGenerator.AddGridObjectToCell(chosenCell, waterTemplate, true);
+}
+else if (noiseValue < sandHeight)          // -0.2 à 0.0 → Sable (plage)
+{
+    GridGenerator.AddGridObjectToCell(chosenCell, sandTemplate, true);
+}
+else if (noiseValue < groundHeight)        // 0.0 à 0.4 → Herbe (plaine)
+{
+    GridGenerator.AddGridObjectToCell(chosenCell, groundTemplate, true);
+}
+else if (noiseValue < rockHeight)          // 0.4 à 0.7 → Roche (colline)
+{
+    GridGenerator.AddGridObjectToCell(chosenCell, rockTemplate, true);
+}
+else                                        // > 0.7 → Montagne
+{
+    GridGenerator.AddGridObjectToCell(chosenCell, rockTemplate, true);
+}
+```
+
+
+En modifiant les height, on peut créer des maps avec plus ou moins d'eau, des montagnes plus hautes, des plages plus larges, etc.
