@@ -238,3 +238,4 @@ Le processus est donc :
 4. Construire le sol autour des salles
 
 Cette méthode garantit une distribution équilibrée des salles sur toute la map, contrairement au placement aléatoire simple qui peut créer des zones vides.
+Et chaque rooms étant connecté entre elles via l'arbre, il est facile de créer des couloirs entre eux
