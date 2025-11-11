@@ -272,7 +272,7 @@ private void PlaceRandomCell()
 
 ### Logique
 puis il faut lisser ce bruit blanc via des contraintes. Pour l'instant on a definis des tiles de different type grace au bruit blanc et on va sans servir. 
-![Map Generation Example](images/Cell.png)
+![Map Generation Example](images/cell.png)
 
 L'image est plutot explicite. Nos conditions qui definissent la futur terrain sont :
 ```csharp
@@ -281,7 +281,7 @@ L'image est plutot explicite. Nos conditions qui definissent la futur terrain so
 ```
 Et plus on repetera cette étape, plus la map sera lisse
 
-![Map Generation Example](iteration/Cell.png)
+![Map Generation Example](images/iteration.png)
 
 ```csharp
     private void SmoothGrid()
