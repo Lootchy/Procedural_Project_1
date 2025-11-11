@@ -239,3 +239,196 @@ Le processus est donc :
 
 Cette méthode garantit une distribution équilibrée des salles sur toute la map, contrairement au placement aléatoire simple qui peut créer des zones vides.
 Et chaque rooms étant connecté entre elles via l'arbre, il est facile de créer des couloirs entre eux
+
+## Cellular Automata
+![Map Generation Example](images/CA_exemple.png)
+
+Cette algo est la raison pour laquelle il y a 2 branch sur mon git
+J'ai voulu optimiser la generation de la map
+
+Cet algorithme utilise un **automate cellulaire** pour générer des terrains organiques en deux étapes : génération d'un bruit blanc puis lissage progressif via des règles de voisinage.
+
+
+### Génération du bruit blanc
+
+La première étape consiste à générer un bruit blanc aléatoire qui servira de base à notre terrain. On parcourt chaque cellule de la grid et on assigne aléatoirement une tile de type "ground" (terre) ou "water" (eau) selon un poids défini.
+```csharp
+private void PlaceRandomCell()
+{
+    for (int x = 0; x < Grid.Width; x++)
+    {
+        for (int z = 0; z < Grid.Lenght; z++)
+        {
+            if (!Grid.TryGetCellByCoordinates(x, z, out var chosenCell))
+            {
+                Debug.LogError($"Unable to get cell on coordinates : ({x}, {z})");
+                continue;
+            }
+            
+            GridObjectTemplate templateToPlace = RandomService.Chance(groundWeight) ? groundTemplate : waterTemplate;
+            GridGenerator.AddGridObjectToCell(chosenCell, templateToPlace, false);
+        }
+    }
+}
+```
+
+Le paramètre `groundWeight` (par défaut 0.5) détermine la probabilité qu'une cellule soit de la terre plutôt que de l'eau. Une valeur de 0.5 signifie 50% de chance pour chaque type.
+
+### Lissage par règles de voisinage
+
+Une fois le bruit blanc généré, on applique un algorithme de lissage basé sur le comptage des voisins. Ce processus transforme le chaos initial en formations naturelles et cohérentes.
+
+![Map Generation Example](images/cell.png)
+
+#### Principe
+
+Pour chaque cellule, on compte combien de ses **8 voisins** (dans toutes les directions) sont de type "ground". Si ce nombre dépasse un seuil défini (`groundCount`), la cellule devient de la terre, sinon elle devient de l'eau.
+```csharp
+public float groundWeight = 0.5f;
+[SerializeField] private int groundCount = 4;
+```
+
+- **groundWeight** : Probabilité initiale de placer de la terre (0.0 à 1.0)
+- **groundCount** : Nombre minimum de voisins "ground" requis pour qu'une cellule devienne terre
+
+#### Itérations progressives
+
+Plus on répète cette étape de lissage, plus la map devient cohérente et les zones se regroupent naturellement.
+
+![Map Generation Example](images/iteration.png)
+
+Avec plusieurs itérations :
+- Les cellules isolées disparaissent
+- Les zones de même type se regroupent
+- Les contours deviennent plus organiques et naturels
+
+#### Implémentation
+```csharp
+private void SmoothGrid()
+{
+    // Définition des 8 directions (voisins directs + diagonales)
+    Vector2Int[] directions = new Vector2Int[]
+    {
+        new Vector2Int(1, 0),   // Droite
+        new Vector2Int(-1, 0),  // Gauche
+        new Vector2Int(0, 1),   // Haut
+        new Vector2Int(0, -1),  // Bas
+        new Vector2Int(1, 1),   // Haut-droite
+        new Vector2Int(1, -1),  // Bas-droite
+        new Vector2Int(-1, 1),  // Haut-gauche
+        new Vector2Int(-1, -1)  // Bas-gauche
+    };
+    
+    // Dictionnaire pour stocker les modifications (évite les conflits pendant le parcours)
+    Dictionary<Cell, GridObjectTemplate> cellsToUpdate = new Dictionary<Cell, GridObjectTemplate>();
+    
+    for (int x = 0; x < Grid.Width; x++)
+    {
+        for (int z = 0; z < Grid.Lenght; z++)
+        {
+            if (!Grid.TryGetCellByCoordinates(x, z, out Cell currentCell))
+                continue;
+            
+            int groundNeighbors = 0;
+            int totalNeighbors = 0;
+            
+            // Compte les voisins de type "ground"
+            foreach (Vector2Int dir in directions)
+            {
+                int checkX = x + dir.x;
+                int checkZ = z + dir.y;
+                
+                if (Grid.TryGetCellByCoordinates(checkX, checkZ, out Cell neighborCell))
+                {
+                    if (neighborCell.GridObject != null)
+                    {
+                        totalNeighbors++;
+                        if (neighborCell.GridObject.Template.Name == groundTemplate.Name)
+                        {
+                            groundNeighbors++;
+                        }
+                    }
+                }
+            }
+            
+            // Applique la règle : si assez de voisins ground, devient ground, sinon water
+            if (groundNeighbors >= groundCount)
+            {
+                cellsToUpdate[currentCell] = groundTemplate;
+            }
+            else
+            {
+                cellsToUpdate[currentCell] = waterTemplate;
+            }
+        }
+    }
+    
+    // Applique toutes les modifications d'un coup
+    foreach (var kvp in cellsToUpdate)
+    {
+        GridGenerator.AddGridObjectToCell(kvp.Key, kvp.Value, true);
+    }
+}
+```
+
+**Point important** : On utilise un dictionnaire temporaire (`cellsToUpdate`) pour stocker toutes les modifications avant de les appliquer. Cela évite que les changements d'une cellule n'influencent le calcul des cellules suivantes pendant la même itération.
+
+### Résultat
+
+Cette technique produit des terrains aux formes organiques et naturelles, parfaits pour créer des îles, des lacs, ou des grottes. En ajustant `groundWeight` et `groundCount`, on peut contrôler la densité et la taille des formations générées.
+
+### Version optimisé
+la version optimisé "CA_Optimize" voit 
+```cshar^p
+    private readonly Vector2Int[] directions = new Vector2Int[]
+    {
+        new Vector2Int(1, 0),
+        new Vector2Int(-1, 0),
+        new Vector2Int(0, 1),
+        new Vector2Int(0, -1),
+        new Vector2Int(1, 1),
+        new Vector2Int(1, -1),
+        new Vector2Int(-1, 1),
+        new Vector2Int(-1, -1)
+    };
+```
+declaré dans la class plutot que dans la méthode puis j'ai crée une nouvelle méthode "Grid.GetCellByCoordinates(x, z, out Cell chosenCell);" qui fait pareil que Grid.TryGetCellByCoordinates(x, z, out var chosenCell) mais ne verifie pas si la cell est valide. Ensuite j'ai créer une nouvelle struct qui servira à modifier le sprite de la prefab de tile plutot que d'un créer une nouvelle
+
+```csharp
+    public struct TemplateSprite
+    {
+        public GridObjectTemplate template;
+        public Sprite sprite;
+    }
+```
+et ensuite on remplace le sprite.
+```csharp
+                TemplateSprite newTemplateSprite;
+                if (groundNeighbors >= stoneCount || waterNeighbors <= 0)
+                {
+                    newTemplateSprite = rock;
+                }
+                else if (groundNeighbors + stoneNeighbors >= groundCount)
+                {
+                    newTemplateSprite = ground;
+                }
+                else
+                {
+                    newTemplateSprite = water;
+                }
+
+                if (currentCell.GridObject?.Template != newTemplateSprite.template)
+                {
+                    cellsToUpdate.Add((currentCell, newTemplateSprite));
+                }
+            }
+        }
+
+        foreach (var (cell, templateSprite) in cellsToUpdate)
+        {
+            cell.View.SetCellToGrid(cell, templateSprite.template, templateSprite.sprite);
+        }
+```
+
+Et ce code permet aussi de modifier uniquement les cell qui doivent changer et pas toute la grid comme le dernier code.
+
