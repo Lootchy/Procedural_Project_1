@@ -62,3 +62,74 @@ AddTileToCell(Cell cell, string tileName, bool overrideExistingObjects); // équ
 
 Cette algo permet de créer des salle rectangulaire de differente taille et de les relier par des chemins/couloirs
 ![Map Generation Example](images/map-simpleroom.png)
+
+### Génération des salles
+La logique est plutot simple, on prend un point random dans la grid et une taille de romm random 
+```csharp
+private RectInt GetRandomRoom()
+{
+    int xPos = RandomService.Range(0, Grid.Width);
+    int yPos = RandomService.Range(0, Grid.Lenght);
+
+    int sizeX = RandomService.Range(2, 10);
+    int sizeY = RandomService.Range(2, 10);
+
+    RectInt room = new RectInt(xPos, yPos, sizeX, sizeY);
+    return room;
+}
+```
+On parcourt l'intégralité de notre Grid en verifiant bien que la Cell ne contient pas deja quelque chose via containObject
+```csharp
+for (int x = room.xMin - 1; x <= room.xMax + 1; x++)
+{
+    for (int y = room.yMin - 1; y <= room.yMax + 1; y++)
+    {
+        if (Grid.TryGetCellByCoordinates(x, y, out Cell cell))
+        {
+            if (cell.ContainObject)
+                return;
+        }
+    }
+}
+```
+puis on re-parcourt la Grid mais cette fois ci pour poser notre tile de la room et enfin une fois la double boucle finis, on ajoute la room à notre liste de room pour pouvoir faire les couloirs après
+
+### Placement des couloirs
+Pour relier les salles entre elles, on parcourt notre liste de rooms et on connecte chaque salle à la suivante en créant un chemin en forme de "L".
+
+La méthode calcule d'abord le centre de chaque salle, puis trace un couloir horizontal jusqu'à atteindre la coordonnée X de la salle cible, et enfin un couloir vertical pour rejoindre la coordonnée Y de destination.
+```csharp
+private void PlaceCorridors()
+{
+    for(int i = 0; i < roomList.Count - 1; i++)
+    {
+        Vector2Int roomStart = roomList[i].GetCenter();
+        Vector2Int roomTarget = roomList[i + 1].GetCenter();
+        
+        int xDir = roomTarget.x > roomStart.x ? 1 : -1;
+        int yDir = roomTarget.y > roomStart.y ? 1 : -1;
+        
+        // Trace le couloir horizontal
+        while (roomStart.x != roomTarget.x)
+        {
+            if(Grid.TryGetCellByCoordinates(roomStart.x, roomStart.y, out Cell cell))
+            {
+                AddTileToCell(cell, CORRIDOR_TILE_NAME, false);
+            }
+            roomStart.x += xDir;
+        }
+        
+        // Trace le couloir vertical
+        while (roomStart.y != roomTarget.y)
+        {
+            if (Grid.TryGetCellByCoordinates(roomStart.x, roomStart.y, out Cell cell))
+            {
+                AddTileToCell(cell, CORRIDOR_TILE_NAME, false);
+            }
+            roomStart.y += yDir;
+        }
+    }
+}
+```
+
+Le paramètre `overrideExistingObjects` est défini sur `false` pour éviter d'écraser les tiles de room déjà placées lors du tracé des couloirs.
