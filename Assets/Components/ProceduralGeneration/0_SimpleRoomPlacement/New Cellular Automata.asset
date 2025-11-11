@@ -13,5 +13,5 @@ MonoBehaviour:
   m_Name: New Cellular Automata
   m_EditorClassIdentifier: 
   _maxSteps: 4
-  groundWeight: 0.6
-  groundCount: 5
+  groundWeight: 0.5
+  groundCount: 4
