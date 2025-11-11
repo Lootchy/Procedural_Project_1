@@ -2,7 +2,7 @@
 
 ## Ressources
 
-Ce projet utilise des packages externes à Unity :
+Ce projet utilise 2 packages externes à Unity :
 - **Architecture Procedural Generation**
 - **Unitask**
 
@@ -12,7 +12,7 @@ Installation via OpenUPM : https://openupm.com/packages/com.cysharp.unitask/#mod
 
 ### Architecture Procedural Generation
 
-Le package **Architecture Procedural Generation** possède déjà un système complet de génération de noise map avec plusieurs paramètres configurables :
+Le package **Architecture Procedural Generation** possède déjà un système complet de génération de noise map avec plusieurs paramètres configurables tels que :
 - Octaves
 - Fréquence
 - Type de noise
@@ -40,7 +40,7 @@ protected const string SAND_TILE_NAME = "Sand";
 
 La classe **Grid** permet de :
 - Récupérer sa taille
-- Récupérer et créer une cellule valide de la grille
+- Récupérer et créer une cellule valide de la grid
 ```csharp
 if (!Grid.TryGetCellByCoordinates(x, z, out var chosenCell))
 {
@@ -53,7 +53,12 @@ if (!Grid.TryGetCellByCoordinates(x, z, out var chosenCell))
 
 La classe **GridGenerator** permet de placer une tile sur une cellule :
 ```csharp
-GridGenerator.AddGridObjectToCell(cell, gridObject);
+AddGridObjectToCell(Cell cell, GridObjectTemplate template, bool overrideExistingObjects);
 // ou
-AddTileToCell(cell, tile); // équivalent
+AddTileToCell(Cell cell, string tileName, bool overrideExistingObjects); // équivalent
 ```
+
+## Simple Room Placement
+
+Cette algo permet de créer des salle rectangulaire de differente taille et de les relier par des chemins/couloirs
+![Map Generation Example](images/map-simpleroom.png)
