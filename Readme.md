@@ -133,3 +133,108 @@ private void PlaceCorridors()
 ```
 
 Le paramètre `overrideExistingObjects` est défini sur `false` pour éviter d'écraser les tiles de room déjà placées lors du tracé des couloirs.
+
+##BSP Generation
+Cet algorithme utilise la technique de **Binary Space Partitioning** pour diviser récursivement l'espace de la grid en zones de plus en plus petites, créant ainsi une structure arborescente de salles.
+![Map Generation Example](images/Dungeon_bsp7.png)
+
+### Principe de fonctionnement
+
+Le BSP fonctionne en créant un arbre de Node qui subdivisent progressivement l'espace disponible. Chaque Node représente une zone rectangulaire qui peut être divisée en deux sous-zones (enfants).
+
+### Structure du Node
+
+Chaque `Node` représente une zone de la grid avec :
+- Un `RectInt` définissant ses limites (`Bound`)
+- Deux enfants potentiels (`Child1` et `Child2`)
+- Une référence au service random pour la génération aléatoire
+```csharp
+public class TestNode
+{
+    private RectInt _bound;
+    private TestNode _child1, _child2;
+    private Vector2Int _roomMinSize = new(5, 5);
+    
+    public bool IsLeaf()
+    {
+        return _child1 == null && _child2 == null;
+    }
+}
+```
+
+Un node est considéré comme une **feuille** (leaf) s'il n'a pas d'enfants, ce qui signifie qu'il ne peut plus être subdivisé et qu'une salle peut y être placée.
+
+### Division récursive
+
+Lors de la création d'un node, on vérifie d'abord si sa taille est suffisante pour être subdivisée (largeur et hauteur supérieures à `_roomMinSize`).
+```csharp
+public TestNode(RectInt bound, TestBSP bSP, RandomService random)
+{
+    _bound = bound;
+    BSP = bSP;
+    _randomService = random;
+    BSP.nodeList.Add(this);
+    
+    if (Bound.width > _roomMinSize.x && Bound.height > _roomMinSize.y)
+    {
+        CreateNewNode();
+    }
+}
+```
+
+Si c'est le cas, on appelle `CreateNewNode()` qui va diviser aléatoirement le nœud soit horizontalement, soit verticalement (50% de chance pour chaque).
+```csharp
+public void CreateNewNode()
+{
+    bool splitHorizontally = _randomService.Chance(0.5f);
+
+    if (!splitHorizontally)
+    {
+        // Division verticale (en haut et en bas)
+        RectInt splitBoundsBottom = new RectInt(_bound.xMin, _bound.yMin, _bound.width, _bound.height / 2);
+        RectInt splitBoundsTop = new RectInt(_bound.xMin, _bound.yMin + _bound.height / 2, _bound.width, _bound.height / 2);
+
+        _child1 = new TestNode(splitBoundsBottom, BSP, _randomService);
+        _child2 = new TestNode(splitBoundsTop, BSP, _randomService);
+    }
+    else
+    {
+        // Division horizontale (gauche et droite)
+        RectInt splitBoundsLeft = new RectInt(_bound.xMin, _bound.yMin, _bound.width / 2, _bound.height);
+        RectInt splitBoundsRight = new RectInt(_bound.xMin + _bound.width / 2, _bound.yMin, _bound.width / 2, _bound.height);
+
+        _child1 = new TestNode(splitBoundsLeft, BSP, _randomService);
+        _child2 = new TestNode(splitBoundsRight, BSP, _randomService);
+    }
+}
+```
+
+Chaque enfant créé va lui-même tenter de se subdiviser, créant ainsi une structure récursive qui s'arrête quand les zones deviennent trop petites.
+
+### Génération de la map
+
+Une fois l'arbre BSP construit, on parcourt tous les nodes et on place une salle dans chaque feuille (nœud sans enfants).
+```csharp
+protected override async UniTask ApplyGeneration(CancellationToken cancellationToken)
+{
+    TestNode root = new TestNode(new RectInt(0, 0, Grid.Width, Grid.Lenght), this, RandomService);
+    
+    foreach(TestNode node in nodeList)
+    {
+        if (node.IsLeaf())
+        {
+            PlacedRoom(node.Bound);
+        }
+    }
+    
+    BuildGround(); //meme code que Simple Room
+}
+```
+
+Le processus est donc :
+1. Créer un nœud racine couvrant toute la grid
+2. Subdiviser récursivement jusqu'à atteindre la taille minimale
+3. Placer une salle dans chaque feuille de l'arbre
+4. Construire le sol autour des salles
+
+Cette méthode garantit une distribution équilibrée des salles sur toute la map, contrairement au placement aléatoire simple qui peut créer des zones vides.
